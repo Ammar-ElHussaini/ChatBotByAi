@@ -1,0 +1,221 @@
+﻿@{
+    ViewData["Title"] = "شات بوت ذكي متعدد الأنماط";
+}
+
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>شات بوت ذكي</h2>
+    </div>
+    <div class="chat-messages" id="chatArea">
+        <div class="message">
+            <div class="message-bot">مرحباً! أنا بوت الدردشة الذكي. اكتب رسالتك ثم اختر نوع الرد المطلوب</div>
+            <div class="message-time">@DateTime.Now.ToString("h:mm tt") - AI Bot</div>
+        </div>
+    </div>
+    <div class="typing-indicator" id="typingIndicator">البوت يجهز الرد...</div>
+    <div class="chat-input">
+        <input type="text" id="userInput" placeholder="اكتب رسالتك هنا..." />
+        <select id="responseType" class="response-type">
+            <option value="text">رد نصي</option>
+            <option value="image">رد بصورة</option>
+        </select>
+        <button id="sendButton">إرسال</button>
+    </div>
+</div>
+
+<style>
+    .chat-container {
+        max-width: 800px;
+        margin: 20px auto;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        background-color: white;
+    }
+
+    .chat-header {
+        background-color: #4CAF50;
+        color: white;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .chat-messages {
+        height: 400px;
+        overflow-y: auto;
+        padding: 15px;
+        background-color: #f9f9f9;
+    }
+
+    .message {
+        margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .message-user {
+        align-self: flex-end;
+        background-color: #e3f2fd;
+        padding: 10px 15px;
+        border-radius: 15px 15px 0 15px;
+        max-width: 70%;
+    }
+
+    .message-bot {
+        align-self: flex-start;
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 15px 15px 15px 0;
+        max-width: 70%;
+    }
+
+    .message-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+    margin-top: 5px;
+}
+
+    .message-time {
+        font-size: 0.8em;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .chat-input {
+        display: flex;
+        padding: 15px;
+        background-color: white;
+        border-top: 1px solid #eee;
+        align-items: center;
+    }
+
+    #userInput {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        outline: none;
+        font-size: 1em;
+    }
+
+    .response-type {
+        padding: 10px;
+        margin: 0 10px;
+        border-radius: 20px;
+        border: 1px solid #ddd;
+    }
+
+    #sendButton {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 1em;
+    }
+
+    .typing-indicator {
+        padding: 5px 15px;
+        color: #666;
+        font-style: italic;
+        display: none;
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+
+<script>
+    $(function () {
+        const chatArea = $('#chatArea');
+        const userInput = $('#userInput');
+        const sendButton = $('#sendButton');
+        const typingIndicator = $('#typingIndicator');
+        const responseType = $('#responseType');
+
+        // اتصال SignalR
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        connection.start().then(function () {
+            console.log("SignalR Connected");
+        }).catch(function (err) {
+            console.error(err.toString());
+        });
+
+        // استقبال الردود
+        // استقبال الردود من SignalR
+connection.on("ReceiveMessage", function (user, content, isImage, timestamp) {
+    typingIndicator.hide();
+    const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    let messageContent;
+    if (isImage) {
+        messageContent = `
+            <img src="${content}" class="message-image" alt="رد البوت">
+            <div class="message-time">${time} - ${user}</div>
+        `;
+    } else {
+        messageContent = `
+            <div>${content}</div>
+            <div class="message-time">${time} - ${user}</div>
+        `;
+    }
+
+    const messageHtml = `
+        <div class="message">
+            <div class="message-bot">${messageContent}</div>
+        </div>
+    `;
+
+    chatArea.append(messageHtml);
+    chatArea.scrollTop(chatArea[0].scrollHeight);
+});
+
+        // إرسال الرسائل
+        function sendMessage() {
+    const message = userInput.val().trim();
+    if (!message) return;
+
+    const timestamp = new Date().toISOString();
+    const selectedMode = responseType.val(); // 'text' أو 'image'
+
+    // عرض رسالة المستخدم
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    chatArea.append(`
+        <div class="message">
+            <div class="message-user">${message}</div>
+            <div class="message-time">${time} - أنت (الوضع: ${selectedMode === 'text' ? 'نصي' : 'صور'})</div>
+        </div>
+    `);
+
+           userInput.val('');
+    typingIndicator.show();
+
+    // إرسال الرسالة عبر SignalR مع تحديد الوضع
+    connection.invoke("SendMessage", "أنت", message, selectedMode)
+        .catch(function (err) {
+            console.error('Error sending message:', err);
+            typingIndicator.hide();
+            chatArea.append(`
+                <div class="message">
+                    <div class="message-bot">حدث خطأ في إرسال الرسالة</div>
+                </div>
+            `);
+        });
+        }
+
+        // أحداث الإرسال
+        sendButton.click(sendMessage);
+        userInput.keypress(function (e) {
+            if (e.which === 13) {
+                sendMessage();
+            }
+        });
+    });
+</script>
