@@ -19,3 +19,45 @@ Key Features & Technologies:
 ✅ AI Models: Implemented advanced models like Meta-Llama 3.1 for text generation and FLUX.1-dev for image creation, with custom parameters including resolution, steps, and output format.
 
 ✅ Code Quality: Followed clean code principles with single responsibility, proper abstraction, and modular service design to ensure high maintainability and clarity.
+
+Project Structure – Explanation of Core Components
+1. AppSettings
+Responsible for loading and mapping configuration values from appsettings.json, including:
+API keys
+AI model names and parameters
+Text and image generation settings Used with IOptions<AppSettings> to inject strongly-typed configuration into services.
+
+2. ChatHub (SignalR)
+A real-time hub that:
+Receives messages from users.
+Sends AI-generated responses back instantly.
+Facilitates smooth, interactive conversations without page reloads.
+
+3. ChatMessage
+Model class representing a single chat message. Includes:
+Message content
+Sender information (e.g., user or AI)
+Timestamp
+Flags for role or status Helps structure and display the conversation history.
+
+4. AiService
+The core service that:
+Takes input from ChatHub
+Prepares the message and settings
+Calls ExternalInformation to interact with the external AI API
+Returns a response to the SignalR hub
+Implements business logic and ensures separation of concerns.
+
+6. ExternalInformation
+Handles HTTP communication with the AI API. Responsibilities:
+Builds and sends requests (via HttpClient)
+Parses and returns the API response
+Supports both text and image generation endpoints
+Keeps all HTTP logic isolated and reusable.
+
+6. RequestApi
+Data model for serializing request payloads to the external AI API. Defines:
+Model name
+Prompt/message
+Additional parameters (e.g., temperature, max tokens, format)
+Ensures all requests are structured and validated properly before sending.
